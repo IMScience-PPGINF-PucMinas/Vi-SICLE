@@ -291,8 +291,18 @@ _iftForestStats *_iftCalcForestStats
   forstats = _iftCreateForestStats(sicle, iftdata, seeds);
 
   // Use the same adjacency as the one used in segmentation
-  if(sicle->use_diag_adj == true) A = iftCircular(sqrtf(2.0));
-  else A = iftCircular(1.0);
+  if(sicle->use_diag_adj == true)
+  {
+    // 26- or 8-neighborhood
+    if(iftIs3DMImage(sicle->mimg) == true) A = iftSpheric(sqrtf(3.0));
+    else A = iftCircular(sqrtf(2.0));
+  }
+  else // Then, a simpler adjacency is considered
+  {
+    // 6- or 4-neighborhood
+    if(iftIs3DMImage(sicle->mimg) == true) A = iftSpheric(1.0);
+    else A = iftCircular(1.0);
+  }
 
   for(int p = 0; p < sicle->mimg->n; ++p) // For each pixel
   {
@@ -551,8 +561,18 @@ void _iftRunIFT
   iftDHeap *heap;
 
   // If it is permitted to consider the diagonal neighbors
-  if(sicle->use_diag_adj == true) A = iftCircular(sqrtf(2.0));
-  else A = iftCircular(1.0);
+  if(sicle->use_diag_adj == true)
+  {
+    // 26- or 8-neighborhood
+    if(iftIs3DMImage(sicle->mimg) == true) A = iftSpheric(sqrtf(3.0));
+    else A = iftCircular(sqrtf(2.0));
+  }
+  else // Then, a simpler adjacency is considered
+  {
+    // 6- or 4-neighborhood
+    if(iftIs3DMImage(sicle->mimg) == true) A = iftSpheric(1.0);
+    else A = iftCircular(1.0);
+  }
 
   tree_size = calloc(seeds->n, sizeof(int));
   assert(tree_size != NULL);

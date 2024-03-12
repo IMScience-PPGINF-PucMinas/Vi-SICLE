@@ -23,7 +23,7 @@ void setSICLEArcCost
 void setSICLERem
 (iftSICLE **sicle, const iftArgs *args);
 void writeLabels
-(const iftImage **labels, const char *path);
+(iftImage **labels, const char *path, int scale);
 
 // from: https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
 char *remove_ext (const char* myStr, char extSep, char pathSep) {
@@ -83,7 +83,6 @@ int main(int argc, char const *argv[])
   }
   //-------------------------------------------------------------------------//
   const char *LABEL_PATH, *EXT;
-  char *basename;
   int scale;
   iftImage *img, *mask, *objsm;
   iftImage **labels;
@@ -103,16 +102,11 @@ int main(int argc, char const *argv[])
   iftDestroyArgs(&args);
   
   labels = iftRunSICLE(sicle);
-  
-  EXT = iftFileExt(LABEL_PATH);
-  basename = remove_ext(LABEL_PATH,'.','/');
   for(scale = 0; scale <= iftSICLEGetNumScales(sicle); ++scale)
   {
-
-    iftWriteImageByExt(labels[scale], "%s_%d.%s", basename, scale,EXT);
+    writeLabels(labels,LABEL_PATH, scale);
     iftDestroyImage(&(labels[scale]));
   }
-  free(basename);
   free(labels);
 
   iftDestroySICLE(&sicle);
@@ -178,8 +172,8 @@ void readImgInputs
   if(iftHasArgVal(args, "img") == true) 
   {
     PATH = iftGetArg(args, "img");
-
-    (*img) = iftReadImageByExt(PATH);
+    if(iftDirExists(PATH) == false) (*img) = iftReadImageByExt(PATH);
+    else (*img) = iftReadImageFolderAsVolume(PATH);
   }
   else iftError("No image path was given", "readImgInputs");
 
@@ -198,7 +192,8 @@ void readImgInputs
     {
       PATH = iftGetArg(args, "mask");
 
-      (*mask) = iftReadImageByExt(PATH);
+    if(iftDirExists(PATH) == false) (*mask) = iftReadImageByExt(PATH);
+    else (*mask) = iftReadImageFolderAsVolume(PATH);
 
       iftVerifyImageDomains(*img, *mask, "readImgInputs");
     }
@@ -212,7 +207,8 @@ void readImgInputs
     {
       PATH = iftGetArg(args, "objsm");
 
-      (*objsm) = iftReadImageByExt(PATH);
+        if(iftDirExists(PATH) == false) (*objsm) = iftReadImageByExt(PATH);
+        else (*objsm) = iftReadImageFolderAsVolume(PATH);
 
       iftVerifyImageDomains(*img, *objsm, "readImgInputs");
     }
@@ -407,4 +403,19 @@ void setSICLERem
     }
     else iftError("No seed removal criterion was given", "setSICLERem");
   }
+}
+void writeLabels(iftImage **labels, const char *path, int scale){
+  const char *EXT = iftFileExt(path);
+  char *basename = remove_ext(path,'.','/');
+
+  if(iftIs3DImage(labels[scale]) == false)
+    iftWriteImageByExt(labels[scale], "%s_%d%s", basename, scale,EXT);
+  else if(iftCompareStrings(EXT, ".scn") == false) {
+    char buffer[1024];
+    sprintf(buffer, "%s_%d%s", basename,scale,EXT);
+    iftWriteVolumeAsSingleVideoFolder(labels[scale], buffer);
+  }
+  else
+    iftError("Unsupported file format", "writeOvlayImage");
+  free(basename);
 }
